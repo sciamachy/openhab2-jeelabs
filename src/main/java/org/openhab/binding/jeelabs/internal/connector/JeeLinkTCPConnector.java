@@ -20,6 +20,14 @@ import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.SocketException;
+
 /**
  * JeeLink connector for remote TCP communication.
  *
@@ -27,25 +35,108 @@ import org.slf4j.LoggerFactory;
  */
 public class JeeLinkTCPConnector implements JeeLinkConnectorInterface {
 
-	private static final Logger logger = LoggerFactory.getLogger(JeeLinkSerialConnector.class);
+	private static final Logger logger = LoggerFactory.getLogger(JeeLinkTCPConnector.class);
 
-	BlockingQueue _queue = new ArrayBlockingQueue(1024);
+	private UDPListener _udpListener = null;	
+
+
+	
+
+	private class UDPListener extends Thread {
+
+		private DatagramSocket socket;
+		BlockingQueue _queue = new ArrayBlockingQueue(1024);
+
+		public UDPListener() {
+
+		}
+
+		public void connect(String ip, Integer port) throws IOException {
+			logger.debug("TCP: Connecting...");
+        
+		    socket = new DatagramSocket();
+		    socket.connect(InetAddress.getByName(ip), port);
+		}
+
+		@Override
+		public void run()
+		{
+			byte[] buffer = new byte[20];
+			logger.debug("Im running!");
+			while(true)
+			{
+				DatagramPacket dp = new DatagramPacket(buffer, buffer.length);
+				if(socket.isConnected())
+				{
+					try
+					{
+						socket.receive(dp);	
+						
+						String s = new String(dp.getData(), 0, dp.getLength());
+						logger.debug(s);
+
+						try 
+						{
+							_queue.put(dp.getData());	
+						}
+						catch (InterruptedException e)
+						{
+							logger.debug("TCP: Interrupted Exception");
+						}
+						
+
+					}
+					catch (IOException e) 
+					{
+						logger.debug("TCP: interrupted");
+					}
+
+					Thread.yield();
+
+				}
+			}
+		}
+
+		public void disconnect() {
+			logger.debug("TCP: Disconnecting...");
+			socket.disconnect();
+			socket = null;
+		}
+
+		public BlockingQueue getQueue() {
+			return _queue;
+		}
+
+	}
 
 	public JeeLinkTCPConnector() {
 	}
 
+	// Guess I need to implement connect(String) to conform to the interface
 	@Override
-	public void connect(String device) {
+	public void connect(String ip) throws IOException 
+	{
+	}
 
-        logger.debug("Connecting...");
+	public void connect(String ip, Integer port) throws IOException {
+		_udpListener = new UDPListener();
+
+		_udpListener.connect(ip,port);
+
+		_udpListener.start();
+        
 	}
 
 	@Override
 	public void disconnect() {
-		logger.debug("Disconnecting...");
+		if(_udpListener != null)
+		{
+			_udpListener.disconnect();	
+		}
+		
 	}
 
 	public BlockingQueue messageQueue() {
-		return _queue;
+		return _udpListener.getQueue();
 	}
 }

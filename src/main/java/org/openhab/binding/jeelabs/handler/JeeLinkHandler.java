@@ -147,9 +147,45 @@ public class JeeLinkHandler extends BaseBridgeHandler {
 				updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.OFFLINE.COMMUNICATION_ERROR, "Connection == null");
 			}
 		}
-		else if (getConfig().get(IP_ADDRESS) != null)
+		else if (getConfig().get(IP_ADDRESS) != null && getConfig().get(UDP_PORT) != null)
 		{
-			updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.OFFLINE.CONFIGURATION_ERROR, "TCP connection not yet supported.");
+			//updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.OFFLINE.CONFIGURATION_ERROR, "TCP connection not yet supported.");
+			if (_connector == null) 
+			{
+				_connector = new JeeLinkTCPConnector();
+			}
+
+			if (_connector != null) 
+			{
+			
+				_connector.disconnect();
+			
+				try {
+					logger.debug("TCP: Trying to connect");
+					_connector.connect((String) getConfig().get(IP_ADDRESS), new Integer(Integer.parseInt((String) (getConfig().get(UDP_PORT)))));
+
+					_dataProcessor.start();
+
+					updateStatus(ThingStatus.ONLINE);
+				}
+				catch (Exception e) 
+				{
+					logger.error("Exception trying to connect: {}", e);
+					updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.OFFLINE.COMMUNICATION_ERROR, "Error Connecting");
+				}
+				catch (UnsatisfiedLinkError e) 
+				{
+					logger.error(
+							"Error occured when trying to load native library for OS '{}' version '{}', processor '{}'",
+							System.getProperty("os.name"),
+							System.getProperty("os.version"),
+							System.getProperty("os.arch"), e);
+				}
+			}
+			else
+			{
+				updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.OFFLINE.COMMUNICATION_ERROR, "Connection == null");
+			}
 		}
 		else
 		{
