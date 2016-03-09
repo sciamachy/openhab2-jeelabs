@@ -20,12 +20,9 @@ import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-//import java.io.BufferedReader;
 import java.io.IOException;
-//import java.io.InputStreamReader;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-//import java.net.InetAddress;
 import java.net.SocketException;
 
 import org.openhab.binding.jeelabs.internal.JeeLinkMessage;
@@ -74,6 +71,8 @@ public class JeeLinkTCPConnector implements JeeLinkConnectorInterface {
 		public void run()
 		{
 			byte[] buffer = new byte[20];
+			byte[] trimmedBytes = new byte[10];
+
 			logger.debug("Im running!");
 			DatagramPacket dp = new DatagramPacket(buffer, buffer.length);
 
@@ -86,13 +85,16 @@ public class JeeLinkTCPConnector implements JeeLinkConnectorInterface {
 						socket.receive(dp);	
 						//String s = new String(dp.getData(), 0, dp.getLength());
 						//logger.debug(s);
-						String hexString = bytesToHex(dp.getData());
+
+						trimmedBytes = Arrays.copyOfRange(dp.getData(), 0, 10);
+
+						String hexString = bytesToHex(trimmedBytes);
 						logger.debug("UDP Bytes In: {}", hexString);
 
 						try 
 						{
 							//Convert bytes to a message
-							JeeLinkMessage msg = new JeeLinkMessage(dp.getData(), false);
+							JeeLinkMessage msg = new JeeLinkMessage(trimmedBytes, false);
 							_queue.put(msg);	
 						}
 						catch (InterruptedException e)
@@ -106,8 +108,6 @@ public class JeeLinkTCPConnector implements JeeLinkConnectorInterface {
 					{
 						logger.debug("UDP: interrupted");
 					}
-
-					Thread.yield();
 				}
 				else
 				{

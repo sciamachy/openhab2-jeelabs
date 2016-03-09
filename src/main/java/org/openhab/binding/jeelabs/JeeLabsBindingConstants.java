@@ -28,7 +28,6 @@ public class JeeLabsBindingConstants {
 
     // Bridge config properties
     public static final String SERIAL_PORT = "serialPort";
-    public static final String IP_ADDRESS = "ipAddress";
     public static final String UDP_PORT = "udpPort";
     public static final String NODE_ID = "nodeId";
 

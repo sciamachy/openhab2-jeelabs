@@ -77,26 +77,33 @@ public class JeeLinkHandler extends BaseBridgeHandler {
 
 		public void run() {
 			logger.debug("DataProcessor started");
-			try {
+			try 
+			{
 				while (true)	//Do this forever
 				{
 					JeeLinkMessage message = (JeeLinkMessage)_connector.messageQueue().take();
 
 					String hexString = bytesToHex(message.data());
 					logger.debug("Hex Bytes: {}", hexString);
+					try
+					{
+						//Lets convert this message data to a reading (this does the parsing)
+						JeeNodeReading reading = new JeeNodeReading(message);
+						logger.debug("Reading is for node: {}, valuetype: {}", reading.nodeIdentifier(), reading.valueType());
 
-					//Lets convert this message data to a reading (this does the parsing)
-					JeeNodeReading reading = new JeeNodeReading(message);
-					logger.debug("Reading is for node: {}, valuetype: {}", reading.nodeIdentifier(), reading.valueType());
-
-					for (JeeNodeDataListener dataListener : _dataListeners) {
-						try {
-							dataListener.dataUpdate(reading);
-						} catch (Exception e) {
-							logger.error(
-									"An exception occurred while calling dataUpdate",
-									e);
+						for (JeeNodeDataListener dataListener : _dataListeners) {
+							try {
+								dataListener.dataUpdate(reading);
+							} catch (Exception e) {
+								logger.error(
+										"An exception occurred while calling dataUpdate",
+										e);
+							}
 						}
+					}
+					catch (Exception e)
+					{
+						logger.error("DP: Error parsing JeeLinkMessage: {e}", e);
 					}
 				}
 			} catch (InterruptedException e) {
