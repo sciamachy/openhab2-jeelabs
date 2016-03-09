@@ -20,13 +20,15 @@ import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
+//import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
+//import java.io.InputStreamReader;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.InetAddress;
+//import java.net.InetAddress;
 import java.net.SocketException;
+
+import org.openhab.binding.jeelabs.internal.JeeLinkMessage;
 
 /**
  * JeeLink connector for remote TCP communication.
@@ -39,11 +41,22 @@ public class JeeLinkTCPConnector implements JeeLinkConnectorInterface {
 
 	private UDPListener _udpListener = null;	
 
+	final protected static char[] hexArray = "0123456789ABCDEF".toCharArray();
+	public static String bytesToHex(byte[] bytes) {
+	    char[] hexChars = new char[bytes.length * 2];
+	    for ( int j = 0; j < bytes.length; j++ ) {
+	        int v = bytes[j] & 0xFF;
+	        hexChars[j * 2] = hexArray[v >>> 4];
+	        hexChars[j * 2 + 1] = hexArray[v & 0x0F];
+	    }
+	    return new String(hexChars);
+	}
 
 	
 
 	private class UDPListener extends Thread {
 
+	
 		private DatagramSocket socket;
 		BlockingQueue _queue = new ArrayBlockingQueue(1024);
 
@@ -51,11 +64,10 @@ public class JeeLinkTCPConnector implements JeeLinkConnectorInterface {
 
 		}
 
-		public void connect(String ip, Integer port) throws IOException {
-			logger.debug("TCP: Connecting...");
+		public void connect(Integer port) throws IOException {
+			logger.debug("UDP: Connecting...");
         
-		    socket = new DatagramSocket();
-		    socket.connect(InetAddress.getByName(ip), port);
+		    socket = new DatagramSocket(port);
 		}
 
 		@Override
@@ -63,42 +75,50 @@ public class JeeLinkTCPConnector implements JeeLinkConnectorInterface {
 		{
 			byte[] buffer = new byte[20];
 			logger.debug("Im running!");
+			DatagramPacket dp = new DatagramPacket(buffer, buffer.length);
+
 			while(true)
 			{
-				DatagramPacket dp = new DatagramPacket(buffer, buffer.length);
-				if(socket.isConnected())
+				if(socket != null)
 				{
 					try
 					{
 						socket.receive(dp);	
-						
-						String s = new String(dp.getData(), 0, dp.getLength());
-						logger.debug(s);
+						//String s = new String(dp.getData(), 0, dp.getLength());
+						//logger.debug(s);
+						String hexString = bytesToHex(dp.getData());
+						logger.debug("UDP Bytes In: {}", hexString);
 
 						try 
 						{
-							_queue.put(dp.getData());	
+							//Convert bytes to a message
+							JeeLinkMessage msg = new JeeLinkMessage(dp.getData(), false);
+							_queue.put(msg);	
 						}
 						catch (InterruptedException e)
 						{
-							logger.debug("TCP: Interrupted Exception");
+							logger.debug("UDP: Interrupted Exception");
 						}
 						
 
 					}
 					catch (IOException e) 
 					{
-						logger.debug("TCP: interrupted");
+						logger.debug("UDP: interrupted");
 					}
 
 					Thread.yield();
-
+				}
+				else
+				{
+					logger.debug("No Socket");
 				}
 			}
+
 		}
 
 		public void disconnect() {
-			logger.debug("TCP: Disconnecting...");
+			logger.debug("UDP: Disconnecting...");
 			socket.disconnect();
 			socket = null;
 		}
@@ -118,10 +138,10 @@ public class JeeLinkTCPConnector implements JeeLinkConnectorInterface {
 	{
 	}
 
-	public void connect(String ip, Integer port) throws IOException {
+	public void connect(Integer port) throws IOException {
 		_udpListener = new UDPListener();
 
-		_udpListener.connect(ip,port);
+		_udpListener.connect(port);
 
 		_udpListener.start();
         
@@ -132,6 +152,8 @@ public class JeeLinkTCPConnector implements JeeLinkConnectorInterface {
 		if(_udpListener != null)
 		{
 			_udpListener.disconnect();	
+			_udpListener.stop();
+			_udpListener = null;
 		}
 		
 	}

@@ -83,11 +83,11 @@ public class JeeLinkHandler extends BaseBridgeHandler {
 					JeeLinkMessage message = (JeeLinkMessage)_connector.messageQueue().take();
 
 					String hexString = bytesToHex(message.data());
-					//logger.debug("Hex Bytes: {}", hexString);
+					logger.debug("Hex Bytes: {}", hexString);
 
 					//Lets convert this message data to a reading (this does the parsing)
 					JeeNodeReading reading = new JeeNodeReading(message);
-					//logger.debug("Reading is for node: {}, valuetype: {}", reading.nodeIdentifier(), reading.valueType());
+					logger.debug("Reading is for node: {}, valuetype: {}", reading.nodeIdentifier(), reading.valueType());
 
 					for (JeeNodeDataListener dataListener : _dataListeners) {
 						try {
@@ -100,7 +100,7 @@ public class JeeLinkHandler extends BaseBridgeHandler {
 					}
 				}
 			} catch (InterruptedException e) {
-				logger.debug("interrupted");
+				logger.debug("DP: interrupted");
 			}
 			logger.debug("DataProcessor done");
 		}
@@ -147,7 +147,7 @@ public class JeeLinkHandler extends BaseBridgeHandler {
 				updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.OFFLINE.COMMUNICATION_ERROR, "Connection == null");
 			}
 		}
-		else if (getConfig().get(IP_ADDRESS) != null && getConfig().get(UDP_PORT) != null)
+		else if (getConfig().get(UDP_PORT) != null)
 		{
 			//updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.OFFLINE.CONFIGURATION_ERROR, "TCP connection not yet supported.");
 			if (_connector == null) 
@@ -162,7 +162,7 @@ public class JeeLinkHandler extends BaseBridgeHandler {
 			
 				try {
 					logger.debug("TCP: Trying to connect");
-					_connector.connect((String) getConfig().get(IP_ADDRESS), new Integer(Integer.parseInt((String) (getConfig().get(UDP_PORT)))));
+					_connector.connect(new Integer(Integer.parseInt((String) (getConfig().get(UDP_PORT)))));
 
 					_dataProcessor.start();
 

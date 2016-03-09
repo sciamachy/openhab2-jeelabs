@@ -26,7 +26,7 @@ public interface JeeLinkConnectorInterface {
 	 *            address).
 	 */
 	public void connect(String device) throws Exception;
-	public void connect(String ip, Integer port) throws Exception;
+	public void connect(Integer port) throws Exception;
 
 
 	/**
